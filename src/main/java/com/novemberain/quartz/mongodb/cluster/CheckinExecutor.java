@@ -18,7 +18,7 @@ public class CheckinExecutor {
     private final long checkinIntervalMillis;
     private final String instanceId;
 
-    private ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    private ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     public CheckinExecutor(CheckinTask checkinTask, long checkinIntervalMillis, String instanceId) {
         this.checkinTask = checkinTask;

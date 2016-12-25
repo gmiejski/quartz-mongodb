@@ -12,6 +12,7 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class SchedulerDao {
     public static final String SCHEDULER_NAME_FIELD = "schedulerName";
     public static final String INSTANCE_ID_FIELD = "instanceId";
     public static final String LAST_CHECKIN_TIME_FIELD = "lastCheckinTime";
+    private static final String LAST_CHECKIN_DATE_FIELD = "lastCheckinDate";
     public static final String CHECKIN_INTERVAL_FIELD = "checkinInterval";
 
     public final MongoCollection<Document> schedulerCollection;
@@ -151,6 +153,7 @@ public class SchedulerDao {
     private Document createUpdateClause(long lastCheckinTime) {
         return new Document("$set", new Document()
                     .append(LAST_CHECKIN_TIME_FIELD, lastCheckinTime)
+                    .append(LAST_CHECKIN_DATE_FIELD, clock.fromTime(lastCheckinTime))
                     .append(CHECKIN_INTERVAL_FIELD, clusterCheckinIntervalMillis));
     }
 
