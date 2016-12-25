@@ -67,7 +67,7 @@ public class TriggerConverter {
     public OperableTrigger toTrigger(TriggerKey triggerKey, Document triggerDoc)
             throws JobPersistenceException {
         OperableTrigger trigger = toTriggerWithOptionalJob(triggerKey, triggerDoc);
-        if ( trigger.getJobKey() == null) {
+        if (trigger.getJobKey() == null) {
             return null;
         }
         return trigger;

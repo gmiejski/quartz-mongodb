@@ -1,9 +1,8 @@
 package com.novemberain.quartz.mongodb.util;
 
-import com.novemberain.quartz.mongodb.Constants;
 import com.novemberain.quartz.mongodb.cluster.Scheduler;
 import com.novemberain.quartz.mongodb.dao.SchedulerDao;
-import org.bson.Document;
+import com.novemberain.quartz.mongodb.lock.Lock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,13 +25,12 @@ public class ExpiryCalculator {
         this.triggerTimeoutMillis = triggerTimeoutMillis;
     }
 
-    public boolean isJobLockExpired(Document lock) {
+    public boolean isJobLockExpired(Lock lock) {
         return isLockExpired(lock, jobTimeoutMillis);
     }
 
-    public boolean isTriggerLockExpired(Document lock) {
-        String schedulerId = lock.getString(Constants.LOCK_INSTANCE_ID);
-        return isLockExpired(lock, triggerTimeoutMillis) && hasDefunctScheduler(schedulerId);
+    public boolean isTriggerLockExpired(Lock lock) {
+        return isLockExpired(lock, triggerTimeoutMillis) && hasDefunctScheduler(lock.getInstanceId());
     }
 
     private boolean hasDefunctScheduler(String schedulerId) {
@@ -44,8 +42,8 @@ public class ExpiryCalculator {
         return scheduler.isDefunct(clock.millis()) && schedulerDao.isNotSelf(scheduler);
     }
 
-    private boolean isLockExpired(Document lock, long timeoutMillis) {
-        Date lockTime = lock.getDate(Constants.LOCK_TIME);
+    private boolean isLockExpired(Lock lock, long timeoutMillis) {
+        Date lockTime = lock.getDate();
         long elapsedTime = clock.millis() - lockTime.getTime();
         return (elapsedTime > timeoutMillis);
     }

@@ -6,6 +6,8 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.result.UpdateResult;
+import com.novemberain.quartz.mongodb.lock.Lock;
+import com.novemberain.quartz.mongodb.lock.LockConverter;
 import com.novemberain.quartz.mongodb.util.Clock;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -61,14 +63,14 @@ public class LocksDao {
         locksCollection.dropIndex(KEY_AND_GROUP_FIELDS);
     }
 
-    public Document findJobLock(JobKey job) {
+    public Lock findJobLock(JobKey job) {
         Bson filter = createJobLockFilter(job);
-        return locksCollection.find(filter).first();
+        return LockConverter.fromDocument(locksCollection.find(filter).first());
     }
 
-    public Document findTriggerLock(TriggerKey trigger) {
+    public Lock findTriggerLock(TriggerKey trigger) {
         Bson filter = createTriggerLockFilter(trigger);
-        return locksCollection.find(filter).first();
+        return LockConverter.fromDocument(locksCollection.find(filter).first());
     }
 
     public List<TriggerKey> findOwnTriggersLocks() {
@@ -149,8 +151,8 @@ public class LocksDao {
         return false;
     }
 
-    public void remove(Document lock) {
-        locksCollection.deleteMany(lock);
+    public void remove(Lock lock) {
+        locksCollection.deleteMany(LockConverter.toDocument(lock));
     }
 
     /**
