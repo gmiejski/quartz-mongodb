@@ -25,6 +25,7 @@ import java.util.List;
 
 import static com.novemberain.quartz.mongodb.Constants.LOCK_INSTANCE_ID;
 import static com.novemberain.quartz.mongodb.util.Keys.*;
+import static com.novemberain.quartz.mongodb.util.Keys.createTriggersLocksFilter;
 
 public class LocksDao {
 
@@ -80,6 +81,15 @@ public class LocksDao {
             keys.add(toTriggerKey(doc));
         }
         return keys;
+    }
+
+    public List<Lock> findLocks(String instanceId) {
+        final List<Lock> locks = new LinkedList<>();
+        Bson filter = createTriggersLocksFilter(instanceId);
+        for (Document doc : locksCollection.find(filter)) {
+            locks.add(LockConverter.fromDocument(doc));
+        }
+        return locks;
     }
 
     public void lockJob(JobDetail job) {

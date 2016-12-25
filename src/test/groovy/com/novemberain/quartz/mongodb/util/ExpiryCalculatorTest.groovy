@@ -1,11 +1,10 @@
 package com.novemberain.quartz.mongodb.util
 
 import com.novemberain.quartz.mongodb.Clocks
-import com.novemberain.quartz.mongodb.Constants
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator
 import com.novemberain.quartz.mongodb.cluster.Scheduler
 import com.novemberain.quartz.mongodb.dao.SchedulerDao
 import com.novemberain.quartz.mongodb.lock.Lock
-import org.bson.Document
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -48,6 +47,16 @@ class ExpiryCalculatorTest extends Specification {
         when: 'Tests for dead scheduler'
         def deadScheduler = createScheduler(0) // lastCheckinTime = 0
         calc = createCalc(clock, deadScheduler)
+
+        then: 'Expired lock: 10001 - 0 > 10000 (timeout)'
+        calc.isTriggerLockExpired(createLock(0))
+
+        and: 'Not expired: 10001 - 1/10001 <= 10000'
+        !calc.isTriggerLockExpired(createLock(1))
+        !calc.isTriggerLockExpired(createLock(10001))
+
+        when: 'Tests for no scheduler (acts as dead scheduler)'
+        calc = createCalc(clock, null)
 
         then: 'Expired lock: 10001 - 0 > 10000 (timeout)'
         calc.isTriggerLockExpired(createLock(0))

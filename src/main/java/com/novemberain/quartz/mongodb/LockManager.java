@@ -3,7 +3,7 @@ package com.novemberain.quartz.mongodb;
 import com.mongodb.MongoWriteException;
 import com.novemberain.quartz.mongodb.dao.LocksDao;
 import com.novemberain.quartz.mongodb.lock.Lock;
-import com.novemberain.quartz.mongodb.util.ExpiryCalculator;
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator;
 import org.quartz.JobDetail;
 import org.quartz.TriggerKey;
 import org.quartz.spi.OperableTrigger;

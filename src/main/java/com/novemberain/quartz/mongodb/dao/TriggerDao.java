@@ -78,8 +78,8 @@ public class TriggerDao {
         return triggerCollection.find(query).sort(ascending(Constants.TRIGGER_NEXT_FIRE_TIME));
     }
 
-    public Document findTrigger(Bson filter) {
-        return triggerCollection.find(filter).first();
+    public Document findTrigger(TriggerKey key) {
+        return findTrigger(Keys.toFilter(key));
     }
 
     public int getCount() {
@@ -139,12 +139,12 @@ public class TriggerDao {
         }
     }
 
-    public void remove(Bson filter) {
-        triggerCollection.deleteMany(filter);
-    }
-
     public void remove(TriggerKey triggerKey) {
         remove(toFilter(triggerKey));
+    }
+
+    private void remove(Bson filter) {
+        triggerCollection.deleteMany(filter);
     }
 
     public void removeByJobId(Object id) {
@@ -203,8 +203,8 @@ public class TriggerDao {
         return triggerCollection.find(Filters.eq(Constants.TRIGGER_JOB_ID, jobId));
     }
 
-    private Document findTrigger(TriggerKey key) {
-        return findTrigger(toFilter(key));
+    private Document findTrigger(Bson filter) {
+        return triggerCollection.find(filter).first();
     }
 
     private long getCount(Bson query) {

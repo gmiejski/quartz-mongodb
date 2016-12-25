@@ -10,15 +10,15 @@ public class Lock {
     private final ObjectId id;
     private final Keys.LockType lockType;
     private final String keyName;
-    private final String keyGrup;
+    private final String keyGroup;
     private final String instanceId;
     private final Date time;
 
-    public Lock(ObjectId id, Keys.LockType lockType, String keyName, String keyGrup, String instanceId, Date time) {
+    public Lock(ObjectId id, Keys.LockType lockType, String keyName, String keyGroup, String instanceId, Date time) {
         this.id = id;
         this.lockType = lockType;
         this.keyName = keyName;
-        this.keyGrup = keyGrup;
+        this.keyGroup = keyGroup;
         this.instanceId = instanceId;
         this.time = time;
     }
@@ -35,8 +35,8 @@ public class Lock {
         return keyName;
     }
 
-    public String getKeyGrup() {
-        return keyGrup;
+    public String getKeyGroup() {
+        return keyGroup;
     }
 
     public String getInstanceId() {
@@ -45,5 +45,18 @@ public class Lock {
 
     public Date getDate() {
         return time;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Lock{");
+        sb.append("id=").append(id);
+        sb.append(", lockType=").append(lockType);
+        sb.append(", keyName='").append(keyName).append('\'');
+        sb.append(", keyGroup='").append(keyGroup).append('\'');
+        sb.append(", instanceId='").append(instanceId).append('\'');
+        sb.append(", time=").append(time);
+        sb.append('}');
+        return sb.toString();
     }
 }

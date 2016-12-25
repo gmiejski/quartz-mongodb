@@ -7,8 +7,10 @@ class LockBuilder {
 
     public static Lock lock (@DelegatesTo(LockClosure) Closure closure) {
         Closure runClone = closure.clone()
-        runClone.delegate = new LockClosure()
-        runClone().build()
+        def lockClosure = new LockClosure()
+        runClone.delegate = lockClosure
+        runClone()
+        lockClosure.build()
     }
 
     public static class LockClosure {
@@ -16,7 +18,7 @@ class LockBuilder {
         public ObjectId id = ObjectId.get();
         public Keys.LockType lockType = Keys.LockType.t;
         public String keyName = "k1";
-        public String keyGrup = "g1";
+        public String keyGroup = "g1";
         public String instanceId = "defaultInstanceId";
         public Date time = new Date();
 
@@ -26,7 +28,7 @@ class LockBuilder {
         }
 
         private Lock build() {
-            return new Lock(id, lockType, keyName, keyGrup, instanceId, time)
+            return new Lock(id, lockType, keyName, keyGroup, instanceId, time)
         }
     }
 }

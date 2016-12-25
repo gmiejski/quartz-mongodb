@@ -7,6 +7,7 @@ import org.quartz.JobExecutionContext
 import org.quartz.JobExecutionException
 import spock.lang.Shared
 import spock.lang.Specification
+import spock.util.concurrent.PollingConditions
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -19,11 +20,11 @@ class FailoverTest extends Specification {
 
     @Shared def quartzFinishWaittimeSecs = 2l
 
-    def insertScheduler(id) {
+    def insertScheduler(String id, long lastCheckinTime = 1462806352702) {
         MongoHelper.addScheduler([
                 instanceId     : id,
                 schedulerName  : 'test cluster',
-                lastCheckinTime: 1462806352702,
+                lastCheckinTime: lastCheckinTime,
                 checkinInterval: 7500l
         ])
     }
@@ -348,4 +349,25 @@ class FailoverTest extends Specification {
         QuartzHelper.shutdown(cluster)
     }
 
+    def 'should remove dead schedulers and their locks without triggers'() {
+        // Case: dead scheduler with lock without existing trigger
+        // result: should remove dead scheduler and lock
+        given:
+        def now = System.currentTimeMillis()
+        insertScheduler('dead-node')
+        insertScheduler('live-one', now)
+        insertScheduler('live-two', now)
+        insertTriggerLock('dead-node')
+
+        when:
+        def cluster = QuartzHelper.createCluster('live-one', 'live-two')
+        def conditions = new PollingConditions(timeout: 10, initialDelay: 1.5, factor: 1.25)
+
+        then:
+        conditions.eventually {
+            assert MongoHelper.getCount('locks') == 0
+            assert MongoHelper.getCount('schedulers') == 2
+        }
+        QuartzHelper.shutdown(cluster)
+    }
 }

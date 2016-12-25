@@ -1,12 +1,14 @@
-package com.novemberain.quartz.mongodb.util;
+package com.novemberain.quartz.mongodb.cluster;
 
-import com.novemberain.quartz.mongodb.cluster.Scheduler;
 import com.novemberain.quartz.mongodb.dao.SchedulerDao;
 import com.novemberain.quartz.mongodb.lock.Lock;
+import com.novemberain.quartz.mongodb.util.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class ExpiryCalculator {
 
@@ -37,8 +39,12 @@ public class ExpiryCalculator {
         Scheduler scheduler = schedulerDao.findInstance(schedulerId);
         if (scheduler == null) {
             log.debug("No such scheduler: {}", schedulerId);
-            return false;
+            return true;
         }
+        return hasDefunctScheduler(scheduler);
+    }
+
+    private boolean hasDefunctScheduler(Scheduler scheduler) {
         return scheduler.isDefunct(clock.millis()) && schedulerDao.isNotSelf(scheduler);
     }
 
@@ -46,5 +52,19 @@ public class ExpiryCalculator {
         Date lockTime = lock.getDate();
         long elapsedTime = clock.millis() - lockTime.getTime();
         return (elapsedTime > timeoutMillis);
+    }
+
+    /**
+     * @return dead schedulers without taking this scheduler instance into account
+     */
+    public List<Scheduler> findDeadSchedulers() {
+        List<Scheduler> deadSchedulers = new ArrayList<>();
+         List<Scheduler> allSchedulers = schedulerDao.getAllByCheckinTime();
+        for ( Scheduler scheduler : allSchedulers) {
+            if (hasDefunctScheduler(scheduler)) {
+                deadSchedulers.add(scheduler);
+            }
+        }
+        return deadSchedulers;
     }
 }

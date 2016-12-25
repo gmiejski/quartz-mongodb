@@ -4,7 +4,7 @@ import com.mongodb.MongoWriteException
 import com.mongodb.ServerAddress
 import com.mongodb.WriteError
 import com.novemberain.quartz.mongodb.dao.LocksDao
-import com.novemberain.quartz.mongodb.util.ExpiryCalculator
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator
 import org.bson.BsonDocument
 import org.quartz.TriggerKey
 import spock.lang.Shared
@@ -70,7 +70,6 @@ class LockManagerTest extends Specification {
 
     def 'should relock expired lock'() {
         given:
-
         def existingLock = lock {
             withTime(123)
         }

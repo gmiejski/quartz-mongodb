@@ -55,12 +55,11 @@ public class TriggerAndJobPersister {
     }
 
     public boolean removeTrigger(TriggerKey triggerKey) {
-        Bson filter = Keys.toFilter(triggerKey);
-        Document trigger = triggerDao.findTrigger(filter);
+        Document trigger = triggerDao.findTrigger(triggerKey);
         if (trigger != null) {
             removeOrphanedJob(trigger);
             //TODO: check if can .deleteOne(filter) here
-            triggerDao.remove(filter);
+            triggerDao.remove(triggerKey);
             return true;
         }
         return false;

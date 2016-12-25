@@ -11,7 +11,7 @@ import com.novemberain.quartz.mongodb.db.MongoConnectorBuilder;
 import com.novemberain.quartz.mongodb.trigger.MisfireHandler;
 import com.novemberain.quartz.mongodb.trigger.TriggerConverter;
 import com.novemberain.quartz.mongodb.util.Clock;
-import com.novemberain.quartz.mongodb.util.ExpiryCalculator;
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator;
 import com.novemberain.quartz.mongodb.util.QueryHelper;
 import org.bson.Document;
 import org.quartz.SchedulerConfigException;
@@ -62,7 +62,9 @@ public class MongoStoreAssembler {
 
         jobCompleteHandler = createJobCompleteHandler(signaler);
 
-        lockManager = createLockManager(jobStore);
+        ExpiryCalculator expiryCalculator = new ExpiryCalculator(schedulerDao,
+                Clock.SYSTEM_CLOCK, jobStore.jobTimeoutMillis, jobStore.triggerTimeoutMillis);
+        lockManager = createLockManager(expiryCalculator);
 
         triggerStateManager = createTriggerStateManager();
 
@@ -77,11 +79,11 @@ public class MongoStoreAssembler {
 
         triggerRunner = createTriggerRunner(misfireHandler);
 
-        checkinExecutor = createCheckinExecutor(jobStore);
+        checkinExecutor = createCheckinExecutor(jobStore, expiryCalculator);
     }
 
-    private CheckinExecutor createCheckinExecutor(MongoDBJobStore jobStore) {
-        return new CheckinExecutor(new CheckinTask(schedulerDao),
+    private CheckinExecutor createCheckinExecutor(MongoDBJobStore jobStore, ExpiryCalculator expiryCalculator) {
+        return new CheckinExecutor(new CheckinTask(schedulerDao, locksDao, triggerDao, expiryCalculator),
                 jobStore.clusterCheckinIntervalMillis, jobStore.instanceId);
     }
 
@@ -102,9 +104,7 @@ public class MongoStoreAssembler {
         return new LocksDao(getCollection(jobStore, "locks"), Clock.SYSTEM_CLOCK, jobStore.instanceId);
     }
 
-    private LockManager createLockManager(MongoDBJobStore jobStore) {
-        ExpiryCalculator expiryCalculator = new ExpiryCalculator(schedulerDao,
-                Clock.SYSTEM_CLOCK, jobStore.jobTimeoutMillis, jobStore.triggerTimeoutMillis);
+    private LockManager createLockManager(ExpiryCalculator expiryCalculator) {
         return new LockManager(locksDao, expiryCalculator);
     }
 

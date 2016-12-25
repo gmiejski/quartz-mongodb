@@ -27,7 +27,7 @@ public class LockConverter {
                 .append("_id", lock.getId())
                 .append(Keys.LOCK_TYPE, lock.getLockType().name())
                 .append(Keys.KEY_NAME, lock.getKeyName())
-                .append(Keys.KEY_GROUP, lock.getKeyGrup())
+                .append(Keys.KEY_GROUP, lock.getKeyGroup())
                 .append(Constants.LOCK_INSTANCE_ID, lock.getInstanceId())
                 .append(Constants.LOCK_TIME, lock.getDate());
     }
