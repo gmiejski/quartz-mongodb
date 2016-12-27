@@ -107,7 +107,7 @@ public class SchedulerDao {
     public List<Scheduler> getAllByCheckinTime() {
         final List<Scheduler> schedulers = new LinkedList<Scheduler>();
         schedulerCollection
-                .find()
+                .find(Filters.eq(SCHEDULER_NAME_FIELD, schedulerName))
                 .sort(ascending(LAST_CHECKIN_TIME_FIELD))
                 .forEach(createResultConverter(schedulers));
         return schedulers;

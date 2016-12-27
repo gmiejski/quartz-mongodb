@@ -164,11 +164,12 @@ class SchedulerDaoTest extends Specification {
         schedulers.isEmpty()
     }
 
-    def 'should return entries in ascending ordered by last checkin time'() {
+    def 'should return entries in ascending ordered by last checkin time for given instanceName only'() {
         given:
         addEntry('i1', 3)
         addEntry('i2', 1)
         addEntry('i3', 2)
+        addEntry('otherCluster', 4, "cluster2")
         def dao = createDao()
 
         when:
@@ -182,9 +183,9 @@ class SchedulerDaoTest extends Specification {
         schedulers*.getLastCheckinTime() == [1, 2, 3]
     }
 
-    def addEntry(String id, long checkinTime) {
+    def addEntry(String id, long checkinTime, String name = schedulerName) {
         MongoHelper.addScheduler([
-                (SchedulerDao.SCHEDULER_NAME_FIELD)   : schedulerName,
+                (SchedulerDao.SCHEDULER_NAME_FIELD)   : name,
                 (SchedulerDao.INSTANCE_ID_FIELD)      : id,
                 (SchedulerDao.CHECKIN_INTERVAL_FIELD) : 100l,
                 (SchedulerDao.LAST_CHECKIN_TIME_FIELD): checkinTime])
