@@ -1,4 +1,4 @@
-package com.novemberain.quartz.mongodb.cluster;
+package com.novemberain.quartz.mongodb.cluster.recovery;
 
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;

@@ -1,7 +1,7 @@
 package com.novemberain.quartz.mongodb;
 
 import com.mongodb.MongoWriteException;
-import com.novemberain.quartz.mongodb.cluster.TriggerRecoverer;
+import com.novemberain.quartz.mongodb.cluster.recovery.TriggerRecoverer;
 import com.novemberain.quartz.mongodb.dao.CalendarDao;
 import com.novemberain.quartz.mongodb.dao.JobDao;
 import com.novemberain.quartz.mongodb.dao.LocksDao;

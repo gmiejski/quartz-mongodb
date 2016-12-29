@@ -105,6 +105,7 @@ public class MongoDBJobStore implements JobStore, Constants {
                 throw new SchedulerConfigException("Cannot recover triggers", e);
             }
             assembler.checkinExecutor.start();
+            assembler.cleanupExecutor.start();
         }
 
         ensureIndexes();
@@ -126,6 +127,7 @@ public class MongoDBJobStore implements JobStore, Constants {
 
     @Override
     public void shutdown() {
+        assembler.checkinExecutor.shutdown();
         assembler.checkinExecutor.shutdown();
         assembler.mongoConnector.close();
     }

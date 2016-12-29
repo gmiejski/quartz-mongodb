@@ -1,4 +1,4 @@
-package com.novemberain.quartz.mongodb.cluster;
+package com.novemberain.quartz.mongodb.cluster.recovery;
 
 import com.novemberain.quartz.mongodb.LockManager;
 import com.novemberain.quartz.mongodb.TriggerAndJobPersister;
