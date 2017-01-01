@@ -53,11 +53,11 @@ public class CheckinTask implements ClusterTask {
 
     @Override
     public void run() {
-        log.info("Node {}:{} checks-in.", schedulerDao.schedulerName, schedulerDao.instanceId);
+        log.info("Node {}:{} checks-in.", schedulerDao.getSchedulerName(), schedulerDao.getInstanceId());
         try {
             schedulerDao.checkIn();
         } catch (MongoException e) {
-            log.error("Node " + schedulerDao.instanceId + " could not check-in: " + e.getMessage(), e);
+            log.error("Node " + schedulerDao.getInstanceId() + " could not check-in: " + e.getMessage(), e);
             errorhandler.run();
         }
     }

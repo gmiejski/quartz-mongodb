@@ -1,11 +1,13 @@
 package com.novemberain.quartz.mongodb.dao;
 
 import com.mongodb.MongoException;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.result.UpdateResult;
+import com.novemberain.quartz.mongodb.Constants;
 import com.novemberain.quartz.mongodb.lock.Lock;
 import com.novemberain.quartz.mongodb.lock.LockConverter;
 import com.novemberain.quartz.mongodb.util.Clock;
@@ -20,8 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import static com.novemberain.quartz.mongodb.Constants.LOCK_INSTANCE_ID;
 import static com.novemberain.quartz.mongodb.util.Keys.*;
@@ -180,6 +184,16 @@ public class LocksDao {
         log.debug("Removing lock for job {}", job.getKey());
         remove(createJobLockFilter(job.getKey()));
     }
+
+    public Set<String> findFiredTriggerInstanceIds(){
+        Set<String> activeLocksInstancesIds = new HashSet<String>();
+        FindIterable<Document> activeLocks = locksCollection.find();
+        for (Document document : activeLocks) {
+            activeLocksInstancesIds.add(document.getString(Constants.LOCK_INSTANCE_ID));
+        }
+        return activeLocksInstancesIds;
+    }
+
 
     private void insertLock(Document lock) {
         locksCollection.insertOne(lock);

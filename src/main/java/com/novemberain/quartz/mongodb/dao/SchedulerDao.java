@@ -30,8 +30,8 @@ public class SchedulerDao {
 
     public final MongoCollection<Document> schedulerCollection;
 
-    public final String schedulerName;
-    public final String instanceId;
+    private final String schedulerName;
+    private final String instanceId;
     public final long clusterCheckinIntervalMillis;
     public final Clock clock;
 
@@ -45,6 +45,14 @@ public class SchedulerDao {
         this.schedulerFilter = createSchedulerFilter(schedulerName, instanceId);
         this.clusterCheckinIntervalMillis = clusterCheckinIntervalMillis;
         this.clock = clock;
+    }
+
+    public String getSchedulerName() {
+        return schedulerName;
+    }
+
+    public String getInstanceId() {
+        return instanceId;
     }
 
     public MongoCollection<Document> getCollection() {

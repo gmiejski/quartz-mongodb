@@ -100,11 +100,11 @@ class FailoverTest extends Specification {
         insertSimpleTrigger(fireTime, 0, 0)
     }
 
-    def insertTriggerLock(instanceId) {
+    def insertTriggerLock(String instanceId, String keyName = 't1') {
         MongoHelper.addLock([
                 (Keys.LOCK_TYPE)            : Keys.LockType.t.name(),
                 (Keys.KEY_GROUP)            : 'g1',
-                (Keys.KEY_NAME)             : 't1',
+                (Keys.KEY_NAME)             : keyName,
                 (Constants.LOCK_INSTANCE_ID): instanceId,
                 (Constants.LOCK_TIME)       : new Date(1462820481910)
         ])
@@ -358,6 +358,7 @@ class FailoverTest extends Specification {
         insertScheduler('live-one', now)
         insertScheduler('live-two', now)
         insertTriggerLock('dead-node')
+        insertTriggerLock('no-node-lock', "t2")
 
         when:
         def cluster = QuartzHelper.createCluster('live-one', 'live-two')

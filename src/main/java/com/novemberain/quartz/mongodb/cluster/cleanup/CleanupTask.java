@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The responsibility of this class is to check-in inside Scheduler Cluster.
@@ -52,8 +53,27 @@ public class CleanupTask implements ClusterTask {
      */
     private void recoverDeadSchedulers() {
         List<Scheduler> deadSchedulers = expiryCalculator.findDeadSchedulers();
+        deadSchedulers.addAll(findOrphanedLocksInstances(deadSchedulers));
         removeLocksWithoutTriggers(deadSchedulers);
         removeSchedulers(deadSchedulers);
+    }
+
+    private List<Scheduler> findOrphanedLocksInstances(List<Scheduler> deadSchedulers) {
+        List<Scheduler> orphanedInstances = new ArrayList<Scheduler>();
+
+        Set<String> allFiredTriggerInstanceNames = locksDao.findFiredTriggerInstanceIds();
+
+        for (Scheduler deadScheduler : deadSchedulers) {
+            allFiredTriggerInstanceNames.remove(deadScheduler.getInstanceId());
+        }
+        allFiredTriggerInstanceNames.remove(schedulerDao.getInstanceId());
+
+        for (String instanceId : allFiredTriggerInstanceNames) {
+            orphanedInstances.add(new Scheduler(instanceId, instanceId, 0, 0));
+            log.warn("Found orphaned locks for instance: " + instanceId);
+        }
+
+        return orphanedInstances;
     }
 
     private void removeSchedulers(List<Scheduler> deadSchedulers) {
