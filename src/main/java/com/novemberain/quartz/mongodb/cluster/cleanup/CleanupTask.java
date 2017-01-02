@@ -55,8 +55,8 @@ public class CleanupTask implements ClusterTask {
         List<Scheduler> existingSchedulers = schedulerDao.getAllByCheckinTime();
         List<Scheduler> deadSchedulers = findDeadSchedulers(existingSchedulers);
         deadSchedulers.addAll(findOrphanedLocksInstances(existingSchedulers));
-        removeLocksWithoutTriggers(deadSchedulers);
-        removeSchedulers(deadSchedulers);
+        List<Scheduler> schedulersToDelete = removeLocksWithoutTriggers(deadSchedulers);
+        removeSchedulers(schedulersToDelete);
     }
 
     private List<Scheduler> findOrphanedLocksInstances(List<Scheduler> existingSchedulers) {
@@ -97,19 +97,30 @@ public class CleanupTask implements ClusterTask {
         return deadSchedulers;
     }
 
-
-    private void removeLocksWithoutTriggers(List<Scheduler> deadSchedulers) {
-        List<Lock> activeLocks = new ArrayList<>();
+    /**
+     * Removes lock for given schedulers.
+     * If lock are matched with existing triggers then we won't remove the scheduler now - we will wait until its lock will be relocked by other scheduler.
+     *
+     * @param deadSchedulers for which we have removed all locks.
+     * @return really dead schedulers without locks - those which should be removed.
+     */
+    private List<Scheduler> removeLocksWithoutTriggers(List<Scheduler> deadSchedulers) {
+        List<Scheduler> schedulersToRemove = new ArrayList<>();
         for (Scheduler scheduler : deadSchedulers) {
-            activeLocks.addAll(locksDao.findLocks(scheduler.getInstanceId()));
-        }
-
-        for (Lock lock : activeLocks) {
-            Document trigger = triggerDao.findTrigger(TriggerKey.triggerKey(lock.getKeyName(), lock.getKeyGroup()));
-            if (trigger == null) {
-                log.info("Removing lock: {} from dead scheduler. No trigger found for this lock.", lock);
-                locksDao.remove(lock);
+            boolean isSchedulerDead = true;
+            for (Lock lock : locksDao.findLocks(scheduler.getInstanceId())) {
+                Document trigger = triggerDao.findTrigger(TriggerKey.triggerKey(lock.getKeyName(), lock.getKeyGroup()));
+                if (trigger == null) {
+                    log.info("Removing lock: {} from dead scheduler. No trigger found for this lock.", lock);
+                    locksDao.remove(lock);
+                } else {
+                    isSchedulerDead = false;
+                }
+            }
+            if (isSchedulerDead) {
+                schedulersToRemove.add(scheduler);
             }
         }
+        return schedulersToRemove;
     }
 }

@@ -61,7 +61,7 @@ class CleanupTaskTest extends Specification {
         1 * locksDao.findLocks("i2") >> s2locks
         1 * triggerDao.findTrigger(TriggerKey.triggerKey("name4", "group1")) >> new Document()
         3 * locksDao.remove(_)
-        2 * schedulerDao.remove(*_)
+        1 * schedulerDao.remove(*_)
     }
 
     def "should remove locks without existing schedulers"() {
@@ -91,9 +91,12 @@ class CleanupTaskTest extends Specification {
         1 * triggerDao.findTrigger(TriggerKey.triggerKey("name4", "group1")) >> new Document()
         0 * locksDao.remove({it.keyName == "name4"} as Lock)
 
+        and: "should not remove schedulers for which we didn't remove all triggers"
+        0 * schedulerDao.remove("i1", _)
+
         and: "should remove rest of locks and two dead schedulers"
         2 * locksDao.remove(_)
-        2 * schedulerDao.remove(*_)
+        1 * schedulerDao.remove(*_)
     }
 
     def Scheduler scheduler(String instanceId) {
