@@ -35,6 +35,10 @@ public class ExpiryCalculator {
         return isLockExpired(lock, triggerTimeoutMillis) && hasDefunctScheduler(lock.getInstanceId());
     }
 
+    public boolean hasDefunctScheduler(Scheduler scheduler) {
+        return scheduler.isDefunct(clock.millis()) && schedulerDao.isNotSelf(scheduler);
+    }
+
     private boolean hasDefunctScheduler(String schedulerId) {
         Scheduler scheduler = schedulerDao.findInstance(schedulerId);
         if (scheduler == null) {
@@ -44,27 +48,9 @@ public class ExpiryCalculator {
         return hasDefunctScheduler(scheduler);
     }
 
-    private boolean hasDefunctScheduler(Scheduler scheduler) {
-        return scheduler.isDefunct(clock.millis()) && schedulerDao.isNotSelf(scheduler);
-    }
-
     private boolean isLockExpired(Lock lock, long timeoutMillis) {
         Date lockTime = lock.getDate();
         long elapsedTime = clock.millis() - lockTime.getTime();
         return (elapsedTime > timeoutMillis);
-    }
-
-    /**
-     * @return dead schedulers without taking this scheduler instance into account
-     */
-    public List<Scheduler> findDeadSchedulers() {
-        List<Scheduler> deadSchedulers = new ArrayList<>();
-         List<Scheduler> allSchedulers = schedulerDao.getAllByCheckinTime();
-        for ( Scheduler scheduler : allSchedulers) {
-            if (hasDefunctScheduler(scheduler)) {
-                deadSchedulers.add(scheduler);
-            }
-        }
-        return deadSchedulers;
     }
 }

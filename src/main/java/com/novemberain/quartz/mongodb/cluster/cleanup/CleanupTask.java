@@ -52,18 +52,19 @@ public class CleanupTask implements ClusterTask {
      * Finds dead schedulers, removes their locks which doesn't have associated trigger and removes dead scheduler
      */
     private void recoverDeadSchedulers() {
-        List<Scheduler> deadSchedulers = expiryCalculator.findDeadSchedulers();
-        deadSchedulers.addAll(findOrphanedLocksInstances(deadSchedulers));
+        List<Scheduler> existingSchedulers = schedulerDao.getAllByCheckinTime();
+        List<Scheduler> deadSchedulers = findDeadSchedulers(existingSchedulers);
+        deadSchedulers.addAll(findOrphanedLocksInstances(existingSchedulers));
         removeLocksWithoutTriggers(deadSchedulers);
         removeSchedulers(deadSchedulers);
     }
 
-    private List<Scheduler> findOrphanedLocksInstances(List<Scheduler> deadSchedulers) {
+    private List<Scheduler> findOrphanedLocksInstances(List<Scheduler> existingSchedulers) {
         List<Scheduler> orphanedInstances = new ArrayList<Scheduler>();
 
         Set<String> allFiredTriggerInstanceNames = locksDao.findFiredTriggerInstanceIds();
 
-        for (Scheduler deadScheduler : deadSchedulers) {
+        for (Scheduler deadScheduler : existingSchedulers) {
             allFiredTriggerInstanceNames.remove(deadScheduler.getInstanceId());
         }
         allFiredTriggerInstanceNames.remove(schedulerDao.getInstanceId());
@@ -82,6 +83,20 @@ public class CleanupTask implements ClusterTask {
             schedulerDao.remove(scheduler.getInstanceId(), scheduler.getLastCheckinTime());
         }
     }
+
+    /**
+     * @return dead schedulers without taking this scheduler instance into account
+     */
+    private List<Scheduler> findDeadSchedulers(List<Scheduler> existingSchedulers) {
+        List<Scheduler> deadSchedulers = new ArrayList<>();
+        for (Scheduler scheduler : existingSchedulers) {
+            if (expiryCalculator.hasDefunctScheduler(scheduler)) {
+                deadSchedulers.add(scheduler);
+            }
+        }
+        return deadSchedulers;
+    }
+
 
     private void removeLocksWithoutTriggers(List<Scheduler> deadSchedulers) {
         List<Lock> activeLocks = new ArrayList<>();
