@@ -12,7 +12,8 @@ class Clocks {
 
     static def Clock constClock(long millis) {
         [millis: millis,
-         now   : { new Date(millis) }] as Clock
+         now   : { new Date(millis) },
+         fromTime: {long time -> new Date(time) }] as Clock
     }
 
     static def Clock incClock() {
@@ -21,6 +22,7 @@ class Clocks {
 
     static def Clock incClock(AtomicInteger counter) {
         [millis: { counter.incrementAndGet() },
-         now   : { new Date(counter.incrementAndGet()) }] as Clock
+         now   : { new Date(counter.incrementAndGet()) },
+         fromTime: {long time -> new Date(time) }] as Clock
     }
 }

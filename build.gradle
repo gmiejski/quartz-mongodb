@@ -98,14 +98,15 @@ publishing {
     }
 }
 
-tasks.withType(Test){
+mongo {
+    journalingEnabled true
+    port 12345
+    logging 'console'
+    mongoVersion '2.6.6'
+}
+
+tasks.withType(Test) {
     runWithMongoDb = true
-    mongo {
-        journalingEnabled true
-        port 12345
-        logging 'console'
-        mongoVersion '2.6.6'
-    }
 }
 
 bintray {

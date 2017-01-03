@@ -1,11 +1,15 @@
 package com.novemberain.quartz.mongodb.dao;
 
 import com.mongodb.MongoException;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.result.UpdateResult;
+import com.novemberain.quartz.mongodb.Constants;
+import com.novemberain.quartz.mongodb.lock.Lock;
+import com.novemberain.quartz.mongodb.lock.LockConverter;
 import com.novemberain.quartz.mongodb.util.Clock;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -18,11 +22,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import static com.novemberain.quartz.mongodb.Constants.LOCK_INSTANCE_ID;
 import static com.novemberain.quartz.mongodb.util.Keys.*;
+import static com.novemberain.quartz.mongodb.util.Keys.createTriggersLocksFilter;
 
 public class LocksDao {
 
@@ -61,14 +68,14 @@ public class LocksDao {
         locksCollection.dropIndex(KEY_AND_GROUP_FIELDS);
     }
 
-    public Document findJobLock(JobKey job) {
+    public Lock findJobLock(JobKey job) {
         Bson filter = createJobLockFilter(job);
-        return locksCollection.find(filter).first();
+        return LockConverter.fromDocument(locksCollection.find(filter).first());
     }
 
-    public Document findTriggerLock(TriggerKey trigger) {
+    public Lock findTriggerLock(TriggerKey trigger) {
         Bson filter = createTriggerLockFilter(trigger);
-        return locksCollection.find(filter).first();
+        return LockConverter.fromDocument(locksCollection.find(filter).first());
     }
 
     public List<TriggerKey> findOwnTriggersLocks() {
@@ -78,6 +85,15 @@ public class LocksDao {
             keys.add(toTriggerKey(doc));
         }
         return keys;
+    }
+
+    public List<Lock> findLocks(String instanceId) {
+        final List<Lock> locks = new LinkedList<>();
+        Bson filter = createTriggersLocksFilter(instanceId);
+        for (Document doc : locksCollection.find(filter)) {
+            locks.add(LockConverter.fromDocument(doc));
+        }
+        return locks;
     }
 
     public void lockJob(JobDetail job) {
@@ -149,8 +165,8 @@ public class LocksDao {
         return false;
     }
 
-    public void remove(Document lock) {
-        locksCollection.deleteMany(lock);
+    public void remove(Lock lock) {
+        locksCollection.deleteMany(LockConverter.toDocument(lock));
     }
 
     /**
@@ -168,6 +184,16 @@ public class LocksDao {
         log.debug("Removing lock for job {}", job.getKey());
         remove(createJobLockFilter(job.getKey()));
     }
+
+    public Set<String> findFiredTriggerInstanceIds(){
+        Set<String> activeLocksInstancesIds = new HashSet<String>();
+        FindIterable<Document> activeLocks = locksCollection.find();
+        for (Document document : activeLocks) {
+            activeLocksInstancesIds.add(document.getString(Constants.LOCK_INSTANCE_ID));
+        }
+        return activeLocksInstancesIds;
+    }
+
 
     private void insertLock(Document lock) {
         locksCollection.insertOne(lock);

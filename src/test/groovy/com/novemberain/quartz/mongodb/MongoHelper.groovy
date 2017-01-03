@@ -107,6 +107,10 @@ class MongoHelper {
         collections['schedulers']
     }
 
+    static def getTriggersColl() {
+        collections['triggers']
+    }
+
     /**
      * Return the first document from given collection.
      */

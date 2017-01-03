@@ -22,7 +22,12 @@ import org.quartz.spi.OperableTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 import static com.mongodb.client.model.Sorts.ascending;
 import static com.novemberain.quartz.mongodb.util.Keys.KEY_GROUP;
@@ -73,8 +78,8 @@ public class TriggerDao {
         return triggerCollection.find(query).sort(ascending(Constants.TRIGGER_NEXT_FIRE_TIME));
     }
 
-    public Document findTrigger(Bson filter) {
-        return triggerCollection.find(filter).first();
+    public Document findTrigger(TriggerKey key) {
+        return findTrigger(Keys.toFilter(key));
     }
 
     public int getCount() {
@@ -134,12 +139,12 @@ public class TriggerDao {
         }
     }
 
-    public void remove(Bson filter) {
-        triggerCollection.deleteMany(filter);
-    }
-
     public void remove(TriggerKey triggerKey) {
         remove(toFilter(triggerKey));
+    }
+
+    private void remove(Bson filter) {
+        triggerCollection.deleteMany(filter);
     }
 
     public void removeByJobId(Object id) {
@@ -155,6 +160,15 @@ public class TriggerDao {
                 Keys.toFilter(triggerKey),
                 createTriggerStateUpdateDocument(state));
     }
+
+    public void transferState(TriggerKey triggerKey, String oldState, String newState) {
+        triggerCollection.updateOne(
+                Filters.and(
+                        Keys.toFilter(triggerKey),
+                        Filters.eq(Constants.TRIGGER_STATE, oldState)),
+                createTriggerStateUpdateDocument(newState));
+    }
+
 
     public void setStateInAll(String state) {
         setStates(new Document(), state);
@@ -189,8 +203,8 @@ public class TriggerDao {
         return triggerCollection.find(Filters.eq(Constants.TRIGGER_JOB_ID, jobId));
     }
 
-    private Document findTrigger(TriggerKey key) {
-        return findTrigger(toFilter(key));
+    private Document findTrigger(Bson filter) {
+        return triggerCollection.find(filter).first();
     }
 
     private long getCount(Bson query) {

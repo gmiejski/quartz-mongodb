@@ -1,14 +1,25 @@
-package com.novemberain.quartz.mongodb.cluster;
+package com.novemberain.quartz.mongodb.cluster.checkin;
 
 import com.mongodb.MongoException;
+import com.novemberain.quartz.mongodb.cluster.ClusterTask;
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator;
+import com.novemberain.quartz.mongodb.cluster.Scheduler;
+import com.novemberain.quartz.mongodb.dao.LocksDao;
 import com.novemberain.quartz.mongodb.dao.SchedulerDao;
+import com.novemberain.quartz.mongodb.dao.TriggerDao;
+import com.novemberain.quartz.mongodb.lock.Lock;
+import org.bson.Document;
+import org.quartz.TriggerKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The responsibility of this class is to check-in inside Scheduler Cluster.
  */
-public class CheckinTask implements Runnable {
+public class CheckinTask implements ClusterTask {
 
     private static final Logger log = LoggerFactory.getLogger(CheckinTask.class);
 
@@ -27,7 +38,8 @@ public class CheckinTask implements Runnable {
         }
     };
 
-    private SchedulerDao schedulerDao;
+    private final SchedulerDao schedulerDao;
+
     private Runnable errorhandler = DEFAULT_ERROR_HANDLER;
 
     public CheckinTask(SchedulerDao schedulerDao) {
@@ -41,12 +53,17 @@ public class CheckinTask implements Runnable {
 
     @Override
     public void run() {
-        log.info("Node {}:{} checks-in.", schedulerDao.schedulerName, schedulerDao.instanceId);
+        log.info("Node {}:{} checks-in.", schedulerDao.getSchedulerName(), schedulerDao.getInstanceId());
         try {
             schedulerDao.checkIn();
         } catch (MongoException e) {
-            log.error("Node " + schedulerDao.instanceId + " could not check-in: " + e.getMessage(), e);
+            log.error("Node " + schedulerDao.getInstanceId() + " could not check-in: " + e.getMessage(), e);
             errorhandler.run();
         }
+    }
+
+    @Override
+    public String name() {
+        return this.getClass().getName();
     }
 }

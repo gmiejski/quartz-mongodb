@@ -1,7 +1,7 @@
 package com.novemberain.quartz.mongodb;
 
 import com.mongodb.MongoWriteException;
-import com.novemberain.quartz.mongodb.cluster.TriggerRecoverer;
+import com.novemberain.quartz.mongodb.cluster.recovery.TriggerRecoverer;
 import com.novemberain.quartz.mongodb.dao.CalendarDao;
 import com.novemberain.quartz.mongodb.dao.JobDao;
 import com.novemberain.quartz.mongodb.dao.LocksDao;
@@ -108,9 +108,15 @@ public class TriggerRunner {
                 break;
             }
 
-            OperableTrigger trigger = triggerConverter.toTrigger(triggerDoc);
+            OperableTrigger trigger = triggerConverter.toTriggerWithOptionalJob(triggerDoc);
 
             if (cannotAcquire(triggers, trigger)) {
+                continue;
+            }
+
+            if (trigger.getJobKey() == null) {
+                log.error("Error retrieving job for trigger {}, setting trigger state to ERROR.", trigger.getKey());
+                triggerDao.transferState(trigger.getKey(), Constants.STATE_WAITING, Constants.STATE_ERROR);
                 continue;
             }
 

@@ -1,16 +1,18 @@
 package com.novemberain.quartz.mongodb.util
 
 import com.novemberain.quartz.mongodb.Clocks
-import com.novemberain.quartz.mongodb.Constants
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator
 import com.novemberain.quartz.mongodb.cluster.Scheduler
 import com.novemberain.quartz.mongodb.dao.SchedulerDao
-import org.bson.Document
+import com.novemberain.quartz.mongodb.lock.Lock
 import spock.lang.Shared
 import spock.lang.Specification
 
+import static com.novemberain.quartz.mongodb.lock.LockBuilder.lock
+
 class ExpiryCalculatorTest extends Specification {
 
-    @Shared def defaultInstanceId = "test instance"
+    @Shared def static defaultInstanceId = "test instance"
     @Shared def jobTimeoutMillis = 100l
     @Shared def triggerTimeoutMillis = 10000l
 
@@ -20,11 +22,11 @@ class ExpiryCalculatorTest extends Specification {
         def calc = createCalc(clock)
 
         expect: 'Expired lock: 101 - 0 > 100 (timeout)'
-        calc.isJobLockExpired(createDoc(0))
+        calc.isJobLockExpired(createLock(0))
 
         and: 'Not expired: 101 - 1/101 <= 100'
-        !calc.isJobLockExpired(createDoc(1))
-        !calc.isJobLockExpired(createDoc(101))
+        !calc.isJobLockExpired(createLock(1))
+        !calc.isJobLockExpired(createLock(101))
     }
 
     def 'should tell if trigger lock has expired'() {
@@ -36,22 +38,32 @@ class ExpiryCalculatorTest extends Specification {
         def calc = createCalc(clock, aliveScheduler)
 
         then: 'Expired lock: 10001 - 0 > 10000 (timeout)'
-        !calc.isTriggerLockExpired(createDoc(0))
+        !calc.isTriggerLockExpired(createLock(0))
 
         and: 'Not expired: 101 - 1/10001 <= 10000'
-        !calc.isTriggerLockExpired(createDoc(1))
-        !calc.isTriggerLockExpired(createDoc(10001))
+        !calc.isTriggerLockExpired(createLock(1))
+        !calc.isTriggerLockExpired(createLock(10001))
 
         when: 'Tests for dead scheduler'
         def deadScheduler = createScheduler(0) // lastCheckinTime = 0
         calc = createCalc(clock, deadScheduler)
 
         then: 'Expired lock: 10001 - 0 > 10000 (timeout)'
-        calc.isTriggerLockExpired(createDoc(0))
+        calc.isTriggerLockExpired(createLock(0))
 
         and: 'Not expired: 10001 - 1/10001 <= 10000'
-        !calc.isTriggerLockExpired(createDoc(1))
-        !calc.isTriggerLockExpired(createDoc(10001))
+        !calc.isTriggerLockExpired(createLock(1))
+        !calc.isTriggerLockExpired(createLock(10001))
+
+        when: 'Tests for no scheduler (acts as dead scheduler)'
+        calc = createCalc(clock, null)
+
+        then: 'Expired lock: 10001 - 0 > 10000 (timeout)'
+        calc.isTriggerLockExpired(createLock(0))
+
+        and: 'Not expired: 10001 - 1/10001 <= 10000'
+        !calc.isTriggerLockExpired(createLock(1))
+        !calc.isTriggerLockExpired(createLock(10001))
     }
 
     def Scheduler createScheduler() {
@@ -78,8 +90,10 @@ class ExpiryCalculatorTest extends Specification {
                 jobTimeoutMillis, triggerTimeoutMillis)
     }
 
-    def createDoc(long lockTime) {
-        new Document([(Constants.LOCK_TIME)       : new Date(lockTime),
-                      (Constants.LOCK_INSTANCE_ID): defaultInstanceId])
+    def Lock createLock(long lockTime) {
+        lock {
+            instanceId : defaultInstanceId
+            withTime(lockTime)
+        }
     }
 }

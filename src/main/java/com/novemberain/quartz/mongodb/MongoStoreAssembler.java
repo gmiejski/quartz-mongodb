@@ -1,17 +1,19 @@
 package com.novemberain.quartz.mongodb;
 
 import com.mongodb.client.MongoCollection;
-import com.novemberain.quartz.mongodb.cluster.CheckinExecutor;
-import com.novemberain.quartz.mongodb.cluster.CheckinTask;
-import com.novemberain.quartz.mongodb.cluster.RecoveryTriggerFactory;
-import com.novemberain.quartz.mongodb.cluster.TriggerRecoverer;
+import com.novemberain.quartz.mongodb.cluster.TaskExecutor;
+import com.novemberain.quartz.mongodb.cluster.checkin.CheckinTask;
+import com.novemberain.quartz.mongodb.cluster.cleanup.CleanupTask;
+import com.novemberain.quartz.mongodb.cluster.cleanup.CleanupTimeCalculator;
+import com.novemberain.quartz.mongodb.cluster.recovery.RecoveryTriggerFactory;
+import com.novemberain.quartz.mongodb.cluster.recovery.TriggerRecoverer;
 import com.novemberain.quartz.mongodb.dao.*;
 import com.novemberain.quartz.mongodb.db.MongoConnector;
 import com.novemberain.quartz.mongodb.db.MongoConnectorBuilder;
 import com.novemberain.quartz.mongodb.trigger.MisfireHandler;
 import com.novemberain.quartz.mongodb.trigger.TriggerConverter;
 import com.novemberain.quartz.mongodb.util.Clock;
-import com.novemberain.quartz.mongodb.util.ExpiryCalculator;
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator;
 import com.novemberain.quartz.mongodb.util.QueryHelper;
 import org.bson.Document;
 import org.quartz.SchedulerConfigException;
@@ -36,7 +38,8 @@ public class MongoStoreAssembler {
     public TriggerDao triggerDao;
 
     public TriggerRecoverer triggerRecoverer;
-    public CheckinExecutor checkinExecutor;
+    public TaskExecutor checkinExecutor;
+    public TaskExecutor cleanupExecutor;
 
     private QueryHelper queryHelper = new QueryHelper();
     private TriggerConverter triggerConverter;
@@ -62,7 +65,9 @@ public class MongoStoreAssembler {
 
         jobCompleteHandler = createJobCompleteHandler(signaler);
 
-        lockManager = createLockManager(jobStore);
+        ExpiryCalculator expiryCalculator = new ExpiryCalculator(schedulerDao,
+                Clock.SYSTEM_CLOCK, jobStore.jobTimeoutMillis, jobStore.triggerTimeoutMillis);
+        lockManager = createLockManager(expiryCalculator);
 
         triggerStateManager = createTriggerStateManager();
 
@@ -78,10 +83,17 @@ public class MongoStoreAssembler {
         triggerRunner = createTriggerRunner(misfireHandler);
 
         checkinExecutor = createCheckinExecutor(jobStore);
+        cleanupExecutor = createCleanupExecutor(jobStore, expiryCalculator);
     }
 
-    private CheckinExecutor createCheckinExecutor(MongoDBJobStore jobStore) {
-        return new CheckinExecutor(new CheckinTask(schedulerDao),
+    private TaskExecutor createCleanupExecutor(MongoDBJobStore jobStore, ExpiryCalculator expiryCalculator) {
+        return new TaskExecutor(new CleanupTask(schedulerDao, locksDao, triggerDao, expiryCalculator),
+                new CleanupTimeCalculator().calculateCleanupPeriod(jobStore.clusterCheckinIntervalMillis),
+                jobStore.instanceId);
+    }
+
+    private TaskExecutor createCheckinExecutor(MongoDBJobStore jobStore) {
+        return new TaskExecutor(new CheckinTask(schedulerDao),
                 jobStore.clusterCheckinIntervalMillis, jobStore.instanceId);
     }
 
@@ -102,9 +114,7 @@ public class MongoStoreAssembler {
         return new LocksDao(getCollection(jobStore, "locks"), Clock.SYSTEM_CLOCK, jobStore.instanceId);
     }
 
-    private LockManager createLockManager(MongoDBJobStore jobStore) {
-        ExpiryCalculator expiryCalculator = new ExpiryCalculator(schedulerDao,
-                Clock.SYSTEM_CLOCK, jobStore.jobTimeoutMillis, jobStore.triggerTimeoutMillis);
+    private LockManager createLockManager(ExpiryCalculator expiryCalculator) {
         return new LockManager(locksDao, expiryCalculator);
     }
 

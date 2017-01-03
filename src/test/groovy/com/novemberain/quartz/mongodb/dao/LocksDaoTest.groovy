@@ -122,12 +122,30 @@ class LocksDaoTest extends Specification {
         counter.get() == 3
     }
 
+    def "should return instanceIds of all active locks"() {
+        given:
+        def dao1 = createDao("scheduler1")
+        dao1.lockTrigger(TriggerKey.triggerKey("n1","g1"))
+        dao1.lockTrigger(TriggerKey.triggerKey("n2","g2"))
+
+        and: "third trigger by different instance"
+        def dao2 = createDao("scheduler2")
+        dao2.lockTrigger(TriggerKey.triggerKey("n3","g1"))
+
+        expect:
+        dao1.findFiredTriggerInstanceIds() == ["scheduler1", "scheduler2"] as Set
+    }
+
     def createDao() {
         createDao(testClock)
     }
 
     def createDao(Clock clock) {
         createDao(clock, instanceId)
+    }
+
+    def createDao(String instanceId) {
+        createDao(testClock, instanceId)
     }
 
     def createDao(Clock clock, String id) {

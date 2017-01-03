@@ -4,13 +4,14 @@ import com.mongodb.MongoWriteException
 import com.mongodb.ServerAddress
 import com.mongodb.WriteError
 import com.novemberain.quartz.mongodb.dao.LocksDao
-import com.novemberain.quartz.mongodb.util.ExpiryCalculator
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator
 import org.bson.BsonDocument
-import org.bson.Document
 import org.quartz.TriggerKey
 import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Subject
+
+import static com.novemberain.quartz.mongodb.lock.LockBuilder.*
 
 class LockManagerTest extends Specification {
 
@@ -53,7 +54,9 @@ class LockManagerTest extends Specification {
 
     def 'should not relock valid lock'() {
         given:
-        def existingLock = new Document()
+        def existingLock = lock {
+            withTime(0)
+        }
 
         when:
         def relocked = manager.relockExpired(tkey)
@@ -67,8 +70,9 @@ class LockManagerTest extends Specification {
 
     def 'should relock expired lock'() {
         given:
-        def lockTime = new Date(123)
-        def existingLock = new Document(Constants.LOCK_TIME, lockTime)
+        def existingLock = lock {
+            withTime(123)
+        }
 
         when:
         def relocked = manager.relockExpired(tkey)
@@ -77,7 +81,7 @@ class LockManagerTest extends Specification {
         0 * locksDao.lockTrigger(_ as TriggerKey)
         1 * locksDao.findTriggerLock(tkey) >> existingLock
         1 * expiryCalc.isTriggerLockExpired(existingLock) >> true
-        1 * locksDao.relock(tkey, lockTime) >> expectedResult
+        1 * locksDao.relock(tkey, new Date(123)) >> expectedResult
         relocked == expectedResult
 
         where:

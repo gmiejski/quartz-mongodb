@@ -43,7 +43,7 @@ class SchedulerDaoTest extends Specification {
         then:
         counter.get() == 1
         MongoHelper.getCount('schedulers') == 1
-        checkScheduler(dao, MongoHelper.getFirst('schedulers'), counter)
+        checkScheduler(dao, MongoHelper.getFirst('schedulers'), counter as long)
     }
 
     def 'should find scheduler instance'() {
@@ -67,7 +67,7 @@ class SchedulerDaoTest extends Specification {
         scheduler.getLastCheckinTime() == 42l
     }
 
-    def 'should update checkin time'() {
+    def 'should update checkin time and date'() {
         given:
         def counter = new AtomicInteger(0)
         def dao = createDao(Clocks.incClock(counter))
@@ -182,9 +182,9 @@ class SchedulerDaoTest extends Specification {
         schedulers*.getLastCheckinTime() == [1, 2, 3]
     }
 
-    def addEntry(String id, long checkinTime) {
+    def addEntry(String id, long checkinTime, String name = schedulerName) {
         MongoHelper.addScheduler([
-                (SchedulerDao.SCHEDULER_NAME_FIELD)   : schedulerName,
+                (SchedulerDao.SCHEDULER_NAME_FIELD)   : name,
                 (SchedulerDao.INSTANCE_ID_FIELD)      : id,
                 (SchedulerDao.CHECKIN_INTERVAL_FIELD) : 100l,
                 (SchedulerDao.LAST_CHECKIN_TIME_FIELD): checkinTime])
@@ -205,14 +205,15 @@ class SchedulerDaoTest extends Specification {
         dao
     }
 
-    def void checkScheduler(dao, entry, expectedTimeMillis) {
+    def void checkScheduler(dao, entry, long expectedTimeMillis) {
         checkScheduler(dao, entry, instanceId, expectedTimeMillis)
     }
 
-    def void checkScheduler(dao, entry, expectedId, expectedTimeMillis) {
+    def void checkScheduler(dao, entry, expectedId, long expectedTimeMillis) {
         assert entry.get('schedulerName') == schedulerName
         assert entry.get('instanceId') == expectedId
         assert entry.get('checkinInterval') == dao.clusterCheckinIntervalMillis
         assert entry.get('lastCheckinTime') == expectedTimeMillis
+        assert entry.get('lastCheckinDate') == new Date(expectedTimeMillis)
     }
 }

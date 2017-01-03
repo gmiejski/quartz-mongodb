@@ -2,8 +2,8 @@ package com.novemberain.quartz.mongodb;
 
 import com.mongodb.MongoWriteException;
 import com.novemberain.quartz.mongodb.dao.LocksDao;
-import com.novemberain.quartz.mongodb.util.ExpiryCalculator;
-import org.bson.Document;
+import com.novemberain.quartz.mongodb.lock.Lock;
+import com.novemberain.quartz.mongodb.cluster.ExpiryCalculator;
 import org.quartz.JobDetail;
 import org.quartz.TriggerKey;
 import org.quartz.spi.OperableTrigger;
@@ -43,7 +43,7 @@ public class LockManager {
      * @param job    job to potentially unlock
      */
     public void unlockExpired(JobDetail job) {
-        Document existingLock = locksDao.findJobLock(job.getKey());
+        Lock existingLock = locksDao.findJobLock(job.getKey());
         if (existingLock != null) {
             if (expiryCalculator.isJobLockExpired(existingLock)) {
                 log.debug("Removing expired lock for job {}", job.getKey());
@@ -74,7 +74,7 @@ public class LockManager {
      * @return true when successfully relocked
      */
     public boolean relockExpired(TriggerKey key) {
-        Document existingLock = locksDao.findTriggerLock(key);
+        Lock existingLock = locksDao.findTriggerLock(key);
         if (existingLock != null) {
             if (expiryCalculator.isTriggerLockExpired(existingLock)) {
                 // When a scheduler is defunct then its triggers become expired
@@ -84,13 +84,13 @@ public class LockManager {
                 // Relock may not be successful when some other scheduler has done
                 // it first.
                 log.info("Trigger {} is expired - re-locking", key);
-                return locksDao.relock(key, existingLock.getDate(Constants.LOCK_TIME));
+                return locksDao.relock(key, existingLock.getDate());
             } else {
                 log.info("Trigger {} hasn't expired yet. Lock time: {}",
-                        key, existingLock.getDate(Constants.LOCK_TIME));
+                        key, existingLock.getDate());
             }
         } else {
-            log.warn("Error retrieving expired lock from the database. Maybe it was deleted");
+            log.warn("Error retrieving expired lock from the database for trigger {}. Maybe it was deleted", key);
         }
         return false;
     }
