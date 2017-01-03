@@ -55,8 +55,21 @@ public class CleanupTask implements ClusterTask {
         List<Scheduler> existingSchedulers = schedulerDao.getAllByCheckinTime();
         List<Scheduler> deadSchedulers = findDeadSchedulers(existingSchedulers);
         deadSchedulers.addAll(findOrphanedLocksInstances(existingSchedulers));
-        List<Scheduler> schedulersToDelete = removeLocksWithoutTriggers(deadSchedulers);
+
+        List<Scheduler> deadSchedulersWithinCluster = filterBySchedulerName(deadSchedulers);
+
+        List<Scheduler> schedulersToDelete = removeLocksWithoutTriggers(deadSchedulersWithinCluster);
         removeSchedulers(schedulersToDelete);
+    }
+
+    private List<Scheduler> filterBySchedulerName(List<Scheduler> deadSchedulers) {
+        List<Scheduler> schedulersWithSameName = new ArrayList<>();
+        for (Scheduler scheduler : deadSchedulers) {
+            if (scheduler.getName().equals(schedulerDao.getSchedulerName())) {
+                schedulersWithSameName.add(scheduler);
+            }
+        }
+        return schedulersWithSameName;
     }
 
     private List<Scheduler> findOrphanedLocksInstances(List<Scheduler> existingSchedulers) {
@@ -70,7 +83,7 @@ public class CleanupTask implements ClusterTask {
         allFiredTriggerInstanceNames.remove(schedulerDao.getInstanceId());
 
         for (String instanceId : allFiredTriggerInstanceNames) {
-            orphanedInstances.add(new Scheduler(instanceId, instanceId, 0, 0));
+            orphanedInstances.add(new Scheduler(schedulerDao.getSchedulerName(), instanceId, 0, 0));
             log.warn("Found orphaned locks for instance: " + instanceId);
         }
 

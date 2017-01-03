@@ -32,7 +32,7 @@ class CleanupTaskTest extends Specification {
 
         then:
         1 * schedulerDao.getAllByCheckinTime() >> [scheduler("i1")]
-        1 * expiryCalculator.hasDefunctScheduler({it.instanceId == "i1"} as Scheduler) >> false
+        1 * expiryCalculator.hasDefunctScheduler({ it.instanceId == "i1" } as Scheduler) >> false
         1 * locksDao.findFiredTriggerInstanceIds() >> []
     }
 
@@ -54,6 +54,7 @@ class CleanupTaskTest extends Specification {
         cleanupTask.run()
 
         then:
+        schedulerDao.schedulerName >> "sname"
         1 * schedulerDao.getAllByCheckinTime() >> [scheduler("i1"), scheduler("i2")]
         2 * expiryCalculator.hasDefunctScheduler(_ as Scheduler) >>> [true, true]
         1 * locksDao.findFiredTriggerInstanceIds() >> []
@@ -67,7 +68,9 @@ class CleanupTaskTest extends Specification {
     def "should remove locks without existing schedulers"() {
         given: "1 lock without scheduler and one dead scheduler"
         def noSchedulerLocks = [lock { instanceId = "lockNoScheduler1"; keyName = "noSc1"; keyGroup = "group1" }]
-        def deadSchedulerLocks = [lock { instanceId = "i1" }, lock { instanceId = "i1"; keyName = "name4"; keyGroup = "group1" }]
+        def deadSchedulerLocks = [lock { instanceId = "i1" }, lock {
+            instanceId = "i1"; keyName = "name4"; keyGroup = "group1"
+        }]
         def thisInstanceId = "thisSchedulerId"
         def aliveScheduler = "i3"
 
@@ -75,6 +78,7 @@ class CleanupTaskTest extends Specification {
         cleanupTask.run()
 
         then:
+        schedulerDao.schedulerName >> "sname"
         schedulerDao.instanceId >> thisInstanceId
         1 * schedulerDao.getAllByCheckinTime() >> [scheduler("i1"), scheduler("i2"), scheduler(thisInstanceId), scheduler(aliveScheduler)]
         4 * expiryCalculator.hasDefunctScheduler(_ as Scheduler) >>> [true, false, false, false]
@@ -89,7 +93,7 @@ class CleanupTaskTest extends Specification {
 
         and: "should not remove lock with associated trigger"
         1 * triggerDao.findTrigger(TriggerKey.triggerKey("name4", "group1")) >> new Document()
-        0 * locksDao.remove({it.keyName == "name4"} as Lock)
+        0 * locksDao.remove({ it.keyName == "name4" } as Lock)
 
         and: "should not remove schedulers for which we didn't remove all triggers"
         0 * schedulerDao.remove("i1", _)
@@ -97,6 +101,22 @@ class CleanupTaskTest extends Specification {
         and: "should remove rest of locks and two dead schedulers"
         2 * locksDao.remove(_)
         1 * schedulerDao.remove(*_)
+    }
+
+    def "should not remove dead schedulers with different name"() {
+        when:
+        cleanupTask.run()
+
+        then:
+        schedulerDao.schedulerName >> "secondSchedulerCluster"
+        schedulerDao.instanceId >> "thisSchedulerId"
+        1 * schedulerDao.getAllByCheckinTime() >> [scheduler("i1"), scheduler("i2")]
+        2 * expiryCalculator.hasDefunctScheduler(_ as Scheduler) >>> [true, true]
+        1 * locksDao.findFiredTriggerInstanceIds() >> []
+
+        and: "should not remove schedulers with another name"
+        0 * locksDao.remove(_)
+        0 * schedulerDao.remove(*_)
     }
 
     def Scheduler scheduler(String instanceId) {

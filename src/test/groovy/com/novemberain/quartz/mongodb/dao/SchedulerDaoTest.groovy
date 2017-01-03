@@ -164,12 +164,11 @@ class SchedulerDaoTest extends Specification {
         schedulers.isEmpty()
     }
 
-    def 'should return entries in ascending ordered by last checkin time for given instanceName only'() {
+    def 'should return entries in ascending ordered by last checkin time'() {
         given:
         addEntry('i1', 3)
         addEntry('i2', 1)
         addEntry('i3', 2)
-        addEntry('otherCluster', 4, "cluster2")
         def dao = createDao()
 
         when:
